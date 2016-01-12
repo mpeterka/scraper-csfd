@@ -20,6 +20,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.nodes.TextNode;
 import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -144,6 +145,9 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider, IMovieTrail
 			// plot
 			addPlot(md, doc);
 
+			// plot
+			addPoster(md, doc);
+
 			// creators
 			addCreators(md, doc);
 
@@ -153,6 +157,20 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider, IMovieTrail
 		}
 
 		return md;
+	}
+
+	private void addPoster(MediaMetadata md, Document doc) {
+		Element poster = doc.getElementById("poster").getElementsByTag("img").first();
+		String src = poster.attr("src");
+		src = fixPosterUrl(src);
+		md.storeMetadata(MediaMetadata.POSTER_URL, src);
+	}
+
+	private String fixPosterUrl(String src) {
+		if (!src.startsWith("http")) {
+			src = "http:" + src;// fix spatne url
+		}
+		return src;
 	}
 
 	private void addTitleYear(MediaMetadata md, Document doc) {
@@ -168,7 +186,14 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider, IMovieTrail
 				md.storeMetadata(MediaMetadata.ORIGINAL_TITLE, StrgUtils.removeCommonSortableName(m.group(2)));
 				md.storeMetadata(MediaMetadata.YEAR, m.group(3));
 			} else {
-				md.storeMetadata(MediaMetadata.TITLE, m.group(1));
+				Element header = doc.getElementsByClass("header").first();
+				md.storeMetadata(MediaMetadata.TITLE, ((TextNode) header.getElementsByTag("h1").first().childNodes().get(0)).text().trim());
+				String origin = doc.getElementsByClass("origin").first().text();
+				Pattern originPattern = Pattern.compile(".*, ([0-9]{4}).*");
+				Matcher originMatcher = originPattern.matcher(origin);
+				if (originMatcher.matches()) {
+					md.storeMetadata(MediaMetadata.YEAR, originMatcher.group(1));
+				}
 			}
 		}
 	}
@@ -391,7 +416,8 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider, IMovieTrail
 				}
 				sr.setMediaType(MediaType.MOVIE);
 				sr.setUrl(BASE_URL + "/" + movieLink.attr("href"));
-				sr.setPosterUrl(movieLink.parent().parent().parent().getElementsByClass("film-poster-small").get(0).attr("src"));
+				String poster = movieLink.parent().parent().parent().getElementsByClass("film-poster-small").get(0).attr("src");
+				sr.setPosterUrl(fixPosterUrl(poster));
 
 				// check if it has at least a title and url
 				if (StringUtils.isBlank(sr.getTitle()) || StringUtils.isBlank(sr.getUrl())) {
@@ -421,199 +447,7 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider, IMovieTrail
 	@Override
 	public List<MediaTrailer> getTrailers(MediaScrapeOptions options) throws Exception {
 		LOGGER.debug("getTrailers() " + options.toString());
-		List<MediaTrailer> trailers = new ArrayList<MediaTrailer>();
-		if (!MetadataUtil.isValidImdbId(options.getImdbId())) {
-			LOGGER.debug("IMDB id not found");
-			return trailers;
-		}
-	/*
-	 * function getTrailerData(ci) { switch (ci) { case 'http://de.clip-1.filmtrailer.com/9507_31566_a_1.flv?log_var=72|491100001 -1|-' : return
-     * '<b>Trailer 1</b><br><i>(small)</i><br><br>&raquo; 160px<br><br>Download:<br>&raquo; <a href=
-     * "http://de.clip-1.filmtrailer.com/9507_31566_a_1.wmv?log_var=72|491100001-1|-" >wmv</a><br>'; case
-     * 'http://de.clip-1.filmtrailer.com/9507_31566_a_2.flv?log_var=72|491100001 -1|-' : return '<b>Trailer 1</b><br><i>(medium)</i><br><br>&raquo;
-     * 240px<br><br>Download:<br>&raquo; <a href= "http://de.clip-1.filmtrailer.com/9507_31566_a_2.wmv?log_var=72|491100001-1|-" >wmv</a><br>'; case
-     * 'http://de.clip-1.filmtrailer.com/9507_31566_a_3.flv?log_var=72|491100001 -1|-' : return '<b>Trailer 1</b><br><i>(large)</i><br><br>&raquo;
-     * 320px<br><br>Download:<br>&raquo; <a href= "http://de.clip-1.filmtrailer.com/9507_31566_a_3.wmv?log_var=72|491100001-1|-" >wmv</a><br>&raquo;
-     * <a href= "http://de.clip-1.filmtrailer.com/9507_31566_a_3.mp4?log_var=72|491100001-1|-" >mp4</a><br>&raquo; <a href=
-     * "http://de.clip-1.filmtrailer.com/9507_31566_a_3.webm?log_var=72|491100001-1|-" >webm</a><br>'; case
-     * 'http://de.clip-1.filmtrailer.com/9507_31566_a_4.flv?log_var=72|491100001 -1|-' : return '<b>Trailer 1</b><br><i>(xlarge)</i><br><br>&raquo;
-     * 400px<br><br>Download:<br>&raquo; <a href= "http://de.clip-1.filmtrailer.com/9507_31566_a_4.wmv?log_var=72|491100001-1|-" >wmv</a><br>&raquo;
-     * <a href= "http://de.clip-1.filmtrailer.com/9507_31566_a_4.mp4?log_var=72|491100001-1|-" >mp4</a><br>&raquo; <a href=
-     * "http://de.clip-1.filmtrailer.com/9507_31566_a_4.webm?log_var=72|491100001-1|-" >webm</a><br>'; case
-     * 'http://de.clip-1.filmtrailer.com/9507_31566_a_5.flv?log_var=72|491100001 -1|-' : return '<b>Trailer 1</b><br><i>(xxlarge)</i><br><br>&raquo;
-     * 640px<br><br>Download:<br>&raquo; <a href= "http://de.clip-1.filmtrailer.com/9507_31566_a_5.wmv?log_var=72|491100001-1|-" >wmv</a><br>&raquo;
-     * <a href= "http://de.clip-1.filmtrailer.com/9507_31566_a_5.mp4?log_var=72|491100001-1|-" >mp4</a><br>&raquo; <a href=
-     * "http://de.clip-1.filmtrailer.com/9507_31566_a_5.webm?log_var=72|491100001-1|-" >webm</a><br>'; case
-     * 'http://de.clip-1.filmtrailer.com/9507_39003_a_1.flv?log_var=72|491100001 -1|-' : return '<b>Trailer 2</b><br><i>(small)</i><br><br>&raquo;
-     * 160px<br><br>Download:<br>&raquo; <a href= "http://de.clip-1.filmtrailer.com/9507_39003_a_1.wmv?log_var=72|491100001-1|-" >wmv</a><br>'; case
-     * 'http://de.clip-1.filmtrailer.com/9507_39003_a_2.flv?log_var=72|491100001 -1|-' : return '<b>Trailer 2</b><br><i>(medium)</i><br><br>&raquo;
-     * 240px<br><br>Download:<br>&raquo; <a href= "http://de.clip-1.filmtrailer.com/9507_39003_a_2.wmv?log_var=72|491100001-1|-" >wmv</a><br>'; case
-     * 'http://de.clip-1.filmtrailer.com/9507_39003_a_3.flv?log_var=72|491100001 -1|-' : return '<b>Trailer 2</b><br><i>(large)</i><br><br>&raquo;
-     * 320px<br><br>Download:<br>&raquo; <a href= "http://de.clip-1.filmtrailer.com/9507_39003_a_3.wmv?log_var=72|491100001-1|-" >wmv</a><br>&raquo;
-     * <a href= "http://de.clip-1.filmtrailer.com/9507_39003_a_3.mp4?log_var=72|491100001-1|-" >mp4</a><br>&raquo; <a href=
-     * "http://de.clip-1.filmtrailer.com/9507_39003_a_3.webm?log_var=72|491100001-1|-" >webm</a><br>'; case
-     * 'http://de.clip-1.filmtrailer.com/9507_39003_a_4.flv?log_var=72|491100001 -1|-' : return '<b>Trailer 2</b><br><i>(xlarge)</i><br><br>&raquo;
-     * 400px<br><br>Download:<br>&raquo; <a href= "http://de.clip-1.filmtrailer.com/9507_39003_a_4.wmv?log_var=72|491100001-1|-" >wmv</a><br>&raquo;
-     * <a href= "http://de.clip-1.filmtrailer.com/9507_39003_a_4.mp4?log_var=72|491100001-1|-" >mp4</a><br>&raquo; <a href=
-     * "http://de.clip-1.filmtrailer.com/9507_39003_a_4.webm?log_var=72|491100001-1|-" >webm</a><br>'; case
-     * 'http://de.clip-1.filmtrailer.com/9507_39003_a_5.flv?log_var=72|491100001 -1|-' : return '<b>Trailer 2</b><br><i>(xxlarge)</i><br><br>&raquo;
-     * 640px<br><br>Download:<br>&raquo; <a href= "http://de.clip-1.filmtrailer.com/9507_39003_a_5.wmv?log_var=72|491100001-1|-" >wmv</a><br>&raquo;
-     * <a href= "http://de.clip-1.filmtrailer.com/9507_39003_a_5.mp4?log_var=72|491100001-1|-" >mp4</a><br>&raquo; <a href=
-     * "http://de.clip-1.filmtrailer.com/9507_39003_a_5.webm?log_var=72|491100001-1|-" >webm</a><br>'; } }
-     */
-		Url url = null;
-		String searchString = BASE_URL + "/view.php?page=suchergebnis&Kat=IMDb&SText=" + options.getImdbId();
-		try {
-			// search with IMDB
-			url = new Url(searchString);
-			InputStream in = url.getInputStream();
-			Document doc = Jsoup.parse(in, "UTF-8", "");
-			in.close();
-			Elements filme = doc.getElementsByAttributeValueMatching("href", "film\\/\\d+,");
-			if (filme == null || filme.isEmpty()) {
-				LOGGER.debug("found no search results");
-				return trailers;
-			}
-			LOGGER.debug("found " + filme.size() + " search results"); // hopefully
-			// only one
-
-			LOGGER.debug("get (trailer) details page");
-			url = new Url(BASE_URL + "/" + StrgUtils.substr(filme.first().toString(), "href=\\\"(.*?)\\\""));
-			in = url.getInputStream();
-			doc = Jsoup.parse(in, "UTF-8", "");
-			in.close();
-
-			// OLD STYLE
-			// <b>Trailer 1</b><br><i>(xxlarge)</i><br><br>&raquo; 640px<br><br>Download:<br>&raquo; <a href=
-			// "http://de.clip-1.filmtrailer.com/9507_31566_a_5.wmv?log_var=72|491100001-1|-" >wmv</a><br>&raquo; <a href=
-			// "http://de.clip-1.filmtrailer.com/9507_31566_a_5.mp4?log_var=72|491100001-1|-" >mp4</a><br>&raquo; <a href=
-			// "http://de.clip-1.filmtrailer.com/9507_31566_a_5.webm?log_var=72|491100001-1|-" >webm</a><br>
-			Pattern regex = Pattern.compile("return '(.*?)';");
-			Matcher m = regex.matcher(doc.toString());
-			while (m.find()) {
-				String s = m.group(1);
-				String tname = StrgUtils.substr(s, "<b>(.*?)</b>");
-				String tpix = StrgUtils.substr(s, "raquo; (.*?)x<br>");
-				// String tqual = StrgUtils.substr(s, "<i>\\((.*?)\\)</i>");
-
-				// url + format
-				Pattern lr = Pattern.compile("<a href=\"(.*?)\">(.*?)</a>");
-				Matcher lm = lr.matcher(s);
-				while (lm.find()) {
-					String turl = lm.group(1);
-					// String tformat = lm.group(2);
-					MediaTrailer trailer = new MediaTrailer();
-					trailer.setName(tname);
-					// trailer.setQuality(tpix + " (" + tformat + ")");
-					trailer.setQuality(tpix);
-					trailer.setProvider("filmtrailer");
-					trailer.setUrl(turl);
-					LOGGER.debug(trailer.toString());
-					trailers.add(trailer);
-				}
-			}
-
-			// NEW STYLE (additional!)
-			// <div class="clips" id="clips2" style="display: none;">
-			// <img src="images/flag_de.gif" align="left" vspace="3" width="18" height="12">&nbsp;
-			// <img src="images/trailer_6.gif" align="top" vspace="1" width="16" height="16" alt="freigegeben ab 6 Jahren">&nbsp;
-			// <i>Trailer 1:</i>
-			// <a href="http://de.clip-1.filmtrailer.com/2845_6584_a_1.flv?log_var=67|491100001-1|-">&nbsp;small&nbsp;</a> &nbsp;
-			// <a href="http://de.clip-1.filmtrailer.com/2845_6584_a_2.flv?log_var=67|491100001-1|-">&nbsp;medium&nbsp;</a> &nbsp;
-			// <a href="http://de.clip-1.filmtrailer.com/2845_6584_a_3.flv?log_var=67|491100001-1|-">&nbsp;large&nbsp;</a> &nbsp;
-			// <a href="http://de.clip-1.filmtrailer.com/2845_6584_a_4.flv?log_var=67|491100001-1|-">&nbsp;xlarge&nbsp;</a> &nbsp;
-			// <a href="http://de.clip-1.filmtrailer.com/2845_6584_a_5.flv?log_var=67|491100001-1|-">&nbsp;xxlarge&nbsp;</a> &nbsp;
-			// <br>
-			// <img src="images/flag_de.gif" align="left" vspace="3" width="18" height="12">&nbsp;
-			// <img src="images/trailer_6.gif" align="top" vspace="1" width="16" height="16" alt="freigegeben ab 6 Jahren">&nbsp;
-			// <i>Trailer 2:</i>
-			// <a href="http://de.clip-1.filmtrailer.com/2845_8244_a_1.flv?log_var=67|491100001-1|-">&nbsp;small&nbsp;</a> &nbsp;
-			// <a href="http://de.clip-1.filmtrailer.com/2845_8244_a_2.flv?log_var=67|491100001-1|-">&nbsp;medium&nbsp;</a> &nbsp;
-			// <a href="http://de.clip-1.filmtrailer.com/2845_8244_a_3.flv?log_var=67|491100001-1|-">&nbsp;large&nbsp;</a> &nbsp;
-			// <a href="http://de.clip-1.filmtrailer.com/2845_8244_a_4.flv?log_var=67|491100001-1|-">&nbsp;xlarge&nbsp;</a> &nbsp;
-			// <a href="http://de.clip-1.filmtrailer.com/2845_8244_a_5.flv?log_var=67|491100001-1|-">&nbsp;xxlarge&nbsp;</a> &nbsp;
-			// <br>
-			// <img src="images/flag_de.gif" align="left" vspace="3" width="18" height="12">&nbsp;
-			// <img src="images/trailer_6.gif" align="top" vspace="1" width="16" height="16" alt="freigegeben ab 6 Jahren">&nbsp;
-			// <i>Trailer 3:</i>
-			// <a href="http://de.clip-1.filmtrailer.com/2845_14749_a_1.flv?log_var=67|491100001-1|-">&nbsp;small&nbsp;</a> &nbsp;
-			// <a href="http://de.clip-1.filmtrailer.com/2845_14749_a_2.flv?log_var=67|491100001-1|-">&nbsp;medium&nbsp;</a> &nbsp;
-			// <a href="http://de.clip-1.filmtrailer.com/2845_14749_a_3.flv?log_var=67|491100001-1|-">&nbsp;large&nbsp;</a> &nbsp;
-			// <a href="http://de.clip-1.filmtrailer.com/2845_14749_a_4.flv?log_var=67|491100001-1|-">&nbsp;xlarge&nbsp;</a> &nbsp;
-			// <a href="http://de.clip-1.filmtrailer.com/2845_14749_a_5.flv?log_var=67|491100001-1|-">&nbsp;xxlarge&nbsp;</a> &nbsp;
-			// <br>
-			// <br>
-			// </div>
-
-			// new style size
-			// 1 = 160 x 90 = small
-			// 2 = 240 x 136 = medium
-			// 3 = 320 x 180 = large
-			// 4 = 400 x 226 = xlarge
-			// 5 = 640 x 360 = xxlarge
-
-			;
-
-			regex = Pattern.compile("<i>(.*?)</i>(.*?)<br>", Pattern.DOTALL); // get them as single trailer line
-			m = regex.matcher(doc.getElementsByClass("clips").html());
-			while (m.find()) {
-				// LOGGER.info(doc.getElementsByClass("clips").html());
-				// parse each line with 5 qualities
-				String tname = m.group(1).trim();
-				tname = tname.replaceFirst(":$", ""); // replace ending colon
-
-				String urls = m.group(2);
-				// url + format
-				Pattern lr = Pattern.compile("<a href=\"(.*?)\">(.*?)</a>");
-				Matcher lm = lr.matcher(urls);
-				while (lm.find()) {
-					String turl = lm.group(1);
-					String tpix = "";
-					String tformat = lm.group(2).replaceAll("&nbsp;", "").trim();
-					switch (tformat) {
-						case "small":
-							tpix = "90p";
-							break;
-
-						case "medium":
-							tpix = "136p";
-							break;
-
-						case "large":
-							tpix = "180p";
-							break;
-
-						case "xlarge":
-							tpix = "226p";
-							break;
-
-						case "xxlarge":
-							tpix = "360p";
-							break;
-
-						default:
-							break;
-					}
-					MediaTrailer trailer = new MediaTrailer();
-					trailer.setName(tname);
-					// trailer.setQuality(tpix + " (" + tformat + ")");
-					trailer.setQuality(tpix);
-					trailer.setProvider("filmtrailer");
-					trailer.setUrl(turl);
-					LOGGER.debug(trailer.toString());
-					trailers.add(trailer);
-				}
-			}
-		} catch (Exception e) {
-			if (url != null) {
-				LOGGER.error("Error parsing {}", url.toString());
-			} else {
-				LOGGER.error("Error parsing {}", searchString);
-			}
-
-			throw e;
-		}
-		return trailers;
+		return new ArrayList<>();
 	}
 
 }

@@ -68,7 +68,7 @@ public class CsfdMetadataProviderTest {
 
 
 	@Test
-	public void testScrape() throws Exception {
+	public void testScrapePlanetaOpic() throws Exception {
 		MediaScrapeOptions options;
 		MediaMetadata md;
 
@@ -91,6 +91,20 @@ public class CsfdMetadataProviderTest {
 		assertThat(md.getCastMembers(MediaCastMember.CastType.ACTOR).get(0).getName()).isEqualTo("Charlton Heston");
 		assertThat(md.getCastMembers(MediaCastMember.CastType.DIRECTOR)).isNotNull();
 		assertThat(md.getCastMembers(MediaCastMember.CastType.DIRECTOR).size()).isEqualTo(1);
+	}
 
+	@Test
+	public void testScrapeMalaCarodejnice() throws Exception {
+		MediaScrapeOptions options;
+		MediaMetadata md;
+
+		options = new MediaScrapeOptions(MediaType.MOVIE);
+		options.setLanguage(MediaLanguages.cs);
+		options.setId(mp.getProviderInfo().getId(), "147525");
+
+		md = mp.getMetadata(options);
+
+		assertThat(md.getStringValue(MediaMetadata.TITLE)).isEqualTo("Malá čarodějnice");
+		assertThat(md.getStringValue(MediaMetadata.YEAR)).isEqualTo("1984");
 	}
 }
