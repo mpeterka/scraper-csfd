@@ -77,12 +77,6 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider, IMovieTrail
 		return providerInfo;
 	}
 
-	/*
-	 * <meta property="og:title" content="Bourne Vermaächtnis, Das (2012)" /> <meta property="og:type" content="movie" /> <meta property="og:url"
-	 * content="http://www.ofdb.de/film/226745,Das-Bourne-Vermächtnis" /> <meta property="og:image" content="http://img.ofdb.de/film/226/226745.jpg" />
-	 * <meta property="og:site_name" content="OFDb" /> <meta property="fb:app_id" content="198140443538429" /> <script
-	 * src="http://www.ofdb.de/jscripts/vn/immer_oben.js" type="text/javascript"></script>
-	 */
 	@Override
 	public MediaMetadata getMetadata(MediaScrapeOptions options) throws Exception {
 		LOGGER.debug("getMetadata() " + options.toString());
@@ -116,7 +110,6 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider, IMovieTrail
 			}
 		}
 
-		// we can only work further if we got a search result on ofdb.de
 		if (StringUtils.isBlank(detailUrl)) {
 			throw new Exception("We did not get any useful movie url");
 		}
@@ -145,7 +138,7 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider, IMovieTrail
 			// plot
 			addPlot(md, doc);
 
-			// plot
+			// poster
 			addPoster(md, doc);
 
 			// creators
