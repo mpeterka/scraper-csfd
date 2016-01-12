@@ -1,16 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
 
-    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder>
-            <pattern>%d{ISO8601} %-5level [%thread] %logger{40}:%L - %msg%n</pattern>
-        </encoder>
-    </appender>
+	<appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+		<encoder>
+			<pattern>%d{ISO8601} %-5level [%thread] %logger{40}:%L - %msg%n</pattern>
+		</encoder>
+	</appender>
 
-    <logger name="org.tinymediamanager" level="DEBUG" />
+	<logger name="org.tinymediamanager" level="DEBUG"/>
+	<logger name="name.peterka" level="TRACE"/>
 
-    <root level="DEBUG">
-        <appender-ref ref="CONSOLE" />
-    </root>
+	<root level="DEBUG">
+		<appender-ref ref="CONSOLE"/>
+	</root>
 
 </configuration>

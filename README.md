@@ -9,3 +9,7 @@ Vzniklo z
     <groupId>org.tinymediamanager.plugins</groupId>
     <artifactId>scraper-ofdb</artifactId>
     <version>1.2-SNAPSHOT</version>
+
+
+## Instalace
+Vybuildovat .jar a nakopírovat do TMM/plugins 

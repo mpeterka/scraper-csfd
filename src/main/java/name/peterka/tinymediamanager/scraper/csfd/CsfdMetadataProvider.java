@@ -44,7 +44,6 @@ import java.io.InputStream;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -347,7 +346,7 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider, IMovieTrail
 
 
 		// 2. search for search string
-		if (StringUtils.isNotEmpty(options.get(MediaSearchOptions.SearchParam.QUERY)) && (movieLinks == null || movieLinks.isEmpty())) {
+		if (StringUtils.isNotEmpty(options.get(SearchParam.QUERY))) {
 			try {
 				String query = options.get(MediaSearchOptions.SearchParam.QUERY);
 				searchQuery = query;
@@ -372,7 +371,6 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider, IMovieTrail
 			return resultList;
 		}
 
-		HashSet<String> foundResultUrls = new HashSet<>();
 		for (Element movieLink : movieLinks) {
 			try {
 				MediaSearchResult sr = new MediaSearchResult(providerInfo.getId());
@@ -399,8 +397,6 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider, IMovieTrail
 				if (StringUtils.isBlank(sr.getTitle()) || StringUtils.isBlank(sr.getUrl())) {
 					continue;
 				}
-
-				foundResultUrls.add(sr.getUrl());
 
 				// compare score based on names
 				float score = MetadataUtil.calculateScore(searchQuery, sr.getTitle());
