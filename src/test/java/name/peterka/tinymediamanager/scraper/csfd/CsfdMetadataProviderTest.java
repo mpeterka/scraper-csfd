@@ -18,6 +18,7 @@ package name.peterka.tinymediamanager.scraper.csfd;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.tinymediamanager.scraper.MediaArtwork;
 import org.tinymediamanager.scraper.MediaCastMember;
 import org.tinymediamanager.scraper.MediaLanguages;
 import org.tinymediamanager.scraper.MediaMetadata;
@@ -25,7 +26,6 @@ import org.tinymediamanager.scraper.MediaScrapeOptions;
 import org.tinymediamanager.scraper.MediaSearchOptions;
 import org.tinymediamanager.scraper.MediaSearchResult;
 import org.tinymediamanager.scraper.MediaType;
-import org.tinymediamanager.scraper.mediaprovider.IMovieMetadataProvider;
 
 import java.util.List;
 
@@ -35,7 +35,7 @@ import static org.junit.Assert.assertNotNull;
 
 public class CsfdMetadataProviderTest {
 
-	IMovieMetadataProvider mp;
+	CsfdMetadataProvider mp;
 
 	@Before
 	public void setUp() {
@@ -106,5 +106,21 @@ public class CsfdMetadataProviderTest {
 
 		assertThat(md.getStringValue(MediaMetadata.TITLE)).isEqualTo("Malá čarodějnice");
 		assertThat(md.getStringValue(MediaMetadata.YEAR)).isEqualTo("1984");
+	}
+
+	@Test
+	public void testMediaMalaCarodejnice() throws Exception {
+		MediaScrapeOptions options;
+		List<MediaArtwork> artworks;
+
+		options = new MediaScrapeOptions(MediaType.MOVIE);
+		options.setLanguage(MediaLanguages.cs);
+		options.setId(mp.getProviderInfo().getId(), "147525");
+		options.setArtworkType(MediaArtwork.MediaArtworkType.POSTER);
+
+		artworks = mp.getArtwork(options);
+
+		assertNotNull(artworks);
+
 	}
 }

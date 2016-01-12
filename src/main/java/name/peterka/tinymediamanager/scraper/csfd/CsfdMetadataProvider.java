@@ -1,18 +1,3 @@
-/*
- * Copyright 2012 - 2015 Manuel Laggner
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package name.peterka.tinymediamanager.scraper.csfd;
 
 import net.xeoh.plugins.base.annotations.PluginImplementation;
@@ -24,6 +9,7 @@ import org.jsoup.nodes.TextNode;
 import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.tinymediamanager.scraper.MediaArtwork;
 import org.tinymediamanager.scraper.MediaCastMember;
 import org.tinymediamanager.scraper.MediaGenres;
 import org.tinymediamanager.scraper.MediaMetadata;
@@ -32,12 +18,11 @@ import org.tinymediamanager.scraper.MediaScrapeOptions;
 import org.tinymediamanager.scraper.MediaSearchOptions;
 import org.tinymediamanager.scraper.MediaSearchOptions.SearchParam;
 import org.tinymediamanager.scraper.MediaSearchResult;
-import org.tinymediamanager.scraper.MediaTrailer;
 import org.tinymediamanager.scraper.MediaType;
 import org.tinymediamanager.scraper.UnsupportedMediaTypeException;
 import org.tinymediamanager.scraper.http.Url;
+import org.tinymediamanager.scraper.mediaprovider.IMovieArtworkProvider;
 import org.tinymediamanager.scraper.mediaprovider.IMovieMetadataProvider;
-import org.tinymediamanager.scraper.mediaprovider.IMovieTrailerProvider;
 import org.tinymediamanager.scraper.util.MetadataUtil;
 import org.tinymediamanager.scraper.util.StrgUtils;
 
@@ -56,7 +41,7 @@ import java.util.regex.Pattern;
  * @author Martin Peterka
  */
 @PluginImplementation
-public class CsfdMetadataProvider implements IMovieMetadataProvider, IMovieTrailerProvider {
+public class CsfdMetadataProvider implements IMovieMetadataProvider, IMovieArtworkProvider {
 	private static final Logger LOGGER = LoggerFactory.getLogger(CsfdMetadataProvider.class);
 	private static final String BASE_URL = "http://www.csfd.cz";
 
@@ -98,7 +83,7 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider, IMovieTrail
 		// case b)
 		if (options.getResult() == null && StringUtils.isNotBlank(options.getId(MediaMetadata.IMDB))) {
 			MediaSearchOptions searchOptions = new MediaSearchOptions(MediaType.MOVIE);
-			searchOptions.set(SearchParam.IMDBID, options.getId(MediaMetadata.IMDB));
+			searchOptions.set(SearchParam.IMDBID, options.getId(MediaMetadata.IMDB));//TODO asi neni dobre
 			try {
 				List<MediaSearchResult> results = search(searchOptions);
 				if (results != null && !results.isEmpty()) {
@@ -106,7 +91,7 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider, IMovieTrail
 					detailUrl = options.getResult().getUrl();
 				}
 			} catch (Exception e) {
-				LOGGER.warn("failed IMDB search: " + e.getMessage());
+				LOGGER.warn("failed IMDB search: " + e.getMessage(), e);
 			}
 		}
 
@@ -155,11 +140,11 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider, IMovieTrail
 	private void addPoster(MediaMetadata md, Document doc) {
 		Element poster = doc.getElementById("poster").getElementsByTag("img").first();
 		String src = poster.attr("src");
-		src = fixPosterUrl(src);
+		src = fixImageUrl(src);
 		md.storeMetadata(MediaMetadata.POSTER_URL, src);
 	}
 
-	private String fixPosterUrl(String src) {
+	private String fixImageUrl(String src) {
 		if (!src.startsWith("http")) {
 			src = "http:" + src;// fix spatne url
 		}
@@ -410,7 +395,7 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider, IMovieTrail
 				sr.setMediaType(MediaType.MOVIE);
 				sr.setUrl(BASE_URL + "/" + movieLink.attr("href"));
 				String poster = movieLink.parent().parent().parent().getElementsByClass("film-poster-small").get(0).attr("src");
-				sr.setPosterUrl(fixPosterUrl(poster));
+				sr.setPosterUrl(fixImageUrl(poster));
 
 				// check if it has at least a title and url
 				if (StringUtils.isBlank(sr.getTitle()) || StringUtils.isBlank(sr.getUrl())) {
@@ -437,10 +422,47 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider, IMovieTrail
 		return resultList;
 	}
 
-	@Override
-	public List<MediaTrailer> getTrailers(MediaScrapeOptions options) throws Exception {
-		LOGGER.debug("getTrailers() " + options.toString());
-		return new ArrayList<>();
-	}
 
+	/**
+	 * FIXME: Nefunguje, mozna We did not get any useful movie url at name.peterka.tinymediamanager.scraper.csfd.CsfdMetadataProvider.getMetadata(CsfdMetadataProvider.java:114) ~[na:na]
+	 *
+	 * @param options
+	 * @return
+	 * @throws Exception
+	 */
+	@Override
+	public List<MediaArtwork> getArtwork(MediaScrapeOptions options) throws Exception {
+		String csfdId = options.getId("csfd");
+		LOGGER.debug("get artwork page " + csfdId);
+		LinkedList<MediaArtwork> result = new LinkedList<>();
+
+		Url url = new Url(BASE_URL + "/film/" + csfdId + "/galerie");
+		InputStream in = url.getInputStream();
+		Document doc = Jsoup.parse(in, "UTF-8", "");
+		in.close();
+
+		Elements photos = doc.getElementsByClass("photo");
+
+		for (int i = 0; i < photos.size(); i++) {
+			Element photo = photos.get(i);
+
+			String style = photo.attr("style");
+			Pattern p = Pattern.compile(".*'(.*)'.*");
+			Matcher matcher = p.matcher(style);
+			if (matcher.matches()) {
+				String background = matcher.group(1);
+				String backgroundUrl = fixImageUrl(background);
+
+				MediaArtwork artwork = new MediaArtwork();
+				artwork.setType(MediaArtwork.MediaArtworkType.BACKGROUND);
+				artwork.setDefaultUrl(backgroundUrl);
+
+				LOGGER.debug("Found artwork at " + backgroundUrl);
+				result.add(artwork);
+			}
+
+		}
+
+		return result;
+	}
 }
