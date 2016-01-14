@@ -18,7 +18,6 @@ package name.peterka.tinymediamanager.scraper.csfd;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.tinymediamanager.scraper.MediaArtwork;
 import org.tinymediamanager.scraper.MediaCastMember;
 import org.tinymediamanager.scraper.MediaLanguages;
 import org.tinymediamanager.scraper.MediaMetadata;
@@ -109,19 +108,4 @@ public class CsfdMetadataProviderTest {
 		assertThat(md.getStringValue(MediaMetadata.YEAR)).isEqualTo("1984");
 	}
 
-	@Test
-	public void testMediaMalaCarodejnice() throws Exception {
-		MediaScrapeOptions options;
-		List<MediaArtwork> artworks;
-
-		options = new MediaScrapeOptions(MediaType.MOVIE);
-		options.setLanguage(MediaLanguages.cs);
-		options.setId(mp.getProviderInfo().getId(), "147525");
-		options.setArtworkType(MediaArtwork.MediaArtworkType.POSTER);
-
-		artworks = mp.getArtwork(options);
-
-		assertNotNull(artworks);
-
-	}
 }

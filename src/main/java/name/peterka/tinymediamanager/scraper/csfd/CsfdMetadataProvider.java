@@ -9,7 +9,6 @@ import org.jsoup.nodes.TextNode;
 import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.tinymediamanager.scraper.MediaArtwork;
 import org.tinymediamanager.scraper.MediaCastMember;
 import org.tinymediamanager.scraper.MediaGenres;
 import org.tinymediamanager.scraper.MediaMetadata;
@@ -21,7 +20,6 @@ import org.tinymediamanager.scraper.MediaSearchResult;
 import org.tinymediamanager.scraper.MediaType;
 import org.tinymediamanager.scraper.UnsupportedMediaTypeException;
 import org.tinymediamanager.scraper.http.Url;
-import org.tinymediamanager.scraper.mediaprovider.IMovieArtworkProvider;
 import org.tinymediamanager.scraper.mediaprovider.IMovieMetadataProvider;
 import org.tinymediamanager.scraper.util.MetadataUtil;
 import org.tinymediamanager.scraper.util.StrgUtils;
@@ -29,7 +27,6 @@ import org.tinymediamanager.scraper.util.StrgUtils;
 import java.io.InputStream;
 import java.net.URLEncoder;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -40,9 +37,8 @@ import java.util.regex.Pattern;
  * @author Martin Peterka
  */
 @PluginImplementation
-public class CsfdMetadataProvider implements IMovieMetadataProvider, IMovieArtworkProvider {
+public class CsfdMetadataProvider implements IMovieMetadataProvider {
 	private static final Logger LOGGER = LoggerFactory.getLogger(CsfdMetadataProvider.class);
-	private static final String BASE_URL = "http://www.csfd.cz";
 
 	private static MediaProviderInfo providerInfo = createMediaProviderInfo();
 
@@ -75,12 +71,10 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider, IMovieArtwo
 		if (StringUtils.isNotBlank(optionsId)) {
 			detailUrl = "http://www.csfd.cz/film/" + optionsId;
 			LOGGER.debug("detailUrl by id=" + optionsId + ": " + detailUrl);
-		} else {
+		} else if (options.getResult() != null){
 			detailUrl = options.getResult().getUrl();
 			LOGGER.debug("detailUrl by url=" + detailUrl);
-		}
-
-		if (StringUtils.isBlank(detailUrl)) {
+		} else {
 			throw new Exception("We did not get any useful movie url");
 		}
 
@@ -124,15 +118,8 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider, IMovieArtwo
 	private void addPoster(MediaMetadata md, Document doc) {
 		Element poster = doc.getElementById("poster").getElementsByTag("img").first();
 		String src = poster.attr("src");
-		src = fixImageUrl(src);
+		src = ImageUtil.fixImageUrl(src);
 		md.storeMetadata(MediaMetadata.POSTER_URL, src);
-	}
-
-	private String fixImageUrl(String src) {
-		if (!src.startsWith("http")) {
-			src = "http:" + src;// fix spatne url
-		}
-		return src;
 	}
 
 	private void addTitleYear(MediaMetadata md, Document doc) {
@@ -247,7 +234,7 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider, IMovieArtwo
 				String query = options.get(MediaSearchOptions.SearchParam.QUERY);
 				searchQuery = query;
 				query = MetadataUtil.removeNonSearchCharacters(query);
-				searchString = BASE_URL + "/hledat/?q=" + URLEncoder.encode(query, "UTF-8");
+				searchString = Constants.BASE_URL + "/hledat/?q=" + URLEncoder.encode(query, "UTF-8");
 				LOGGER.debug("search for everything: " + query);
 
 				Url url = new Url(searchString);
@@ -286,9 +273,9 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider, IMovieArtwo
 					sr.setYear(yearDesc);
 				}
 				sr.setMediaType(MediaType.MOVIE);
-				sr.setUrl(BASE_URL + "/" + movieLink.attr("href"));
+				sr.setUrl(Constants.BASE_URL + "/" + movieLink.attr("href"));
 				String poster = movieLink.parent().parent().parent().getElementsByClass("film-poster-small").get(0).attr("src");
-				sr.setPosterUrl(fixImageUrl(poster));
+				sr.setPosterUrl(ImageUtil.fixImageUrl(poster));
 
 				// check if it has at least a title and url
 				if (StringUtils.isBlank(sr.getTitle()) || StringUtils.isBlank(sr.getUrl())) {
@@ -312,48 +299,4 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider, IMovieArtwo
 		return resultList;
 	}
 
-
-	/**
-	 * FIXME: Nefunguje, mozna We did not get any useful movie url at name.peterka.tinymediamanager.scraper.csfd.CsfdMetadataProvider.getMetadata(CsfdMetadataProvider.java:114) ~[na:na]
-	 *
-	 * @param options
-	 * @return
-	 * @throws Exception
-	 */
-	@Override
-	public List<MediaArtwork> getArtwork(MediaScrapeOptions options) throws Exception {
-		String csfdId = options.getId(getProviderInfo().getId());
-		LOGGER.debug("get artwork options " + options);
-		LOGGER.debug("get artwork page " + csfdId);
-		LinkedList<MediaArtwork> result = new LinkedList<>();
-
-		Url url = new Url(BASE_URL + "/film/" + csfdId + "/galerie");
-		InputStream in = url.getInputStream();
-		Document doc = Jsoup.parse(in, "UTF-8", "");
-		in.close();
-
-		Elements photos = doc.getElementsByClass("photo");
-
-		for (int i = 0; i < photos.size(); i++) {
-			Element photo = photos.get(i);
-
-			String style = photo.attr("style");
-			Pattern p = Pattern.compile(".*'(.*)'.*");
-			Matcher matcher = p.matcher(style);
-			if (matcher.matches()) {
-				String background = matcher.group(1);
-				String backgroundUrl = fixImageUrl(background);
-
-				MediaArtwork artwork = new MediaArtwork();
-				artwork.setType(MediaArtwork.MediaArtworkType.BACKGROUND);
-				artwork.setDefaultUrl(backgroundUrl);
-
-				LOGGER.debug("Found artwork at " + backgroundUrl);
-				result.add(artwork);
-			}
-
-		}
-
-		return result;
-	}
 }

@@ -4,7 +4,7 @@ http://www.tinymediamanager.org/
 
 ... work in progres..
 
-Vzniklo z 
+Inspiration:
  
     <groupId>org.tinymediamanager.plugins</groupId>
     <artifactId>scraper-ofdb</artifactId>
@@ -12,4 +12,7 @@ Vzniklo z
 
 
 ## Instalace
-Vybuildovat .jar a nakopírovat do TMM/plugins 
+* Maven build *.jar
+* copy to TMM/plugins 
+
+Tested with TMM 2.7.1
