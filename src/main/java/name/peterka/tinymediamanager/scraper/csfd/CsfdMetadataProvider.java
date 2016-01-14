@@ -29,7 +29,6 @@ import org.tinymediamanager.scraper.util.StrgUtils;
 import java.io.InputStream;
 import java.net.URLEncoder;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -54,6 +53,7 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider, IMovieArtwo
 		MediaProviderInfo providerInfo = new MediaProviderInfo("csfd", "Česko-Slovenská filmová databáze (CSFD.cz)",
 				"<html><h3>Česko-Slovenská filmová databáze</h3><br />Available languages: CZ</html>",
 				CsfdMetadataProvider.class.getResource("/csfd_cz.png"));
+		providerInfo.setVersion(CsfdMetadataProvider.class);
 		return providerInfo;
 	}
 
@@ -72,27 +72,13 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider, IMovieArtwo
 
 		String detailUrl = "";
 
-		if (StringUtils.isNotBlank(options.getId(getProviderInfo().getId())) || options.getResult() != null) {
-			if (StringUtils.isNotBlank(options.getId(getProviderInfo().getId()))) {
-				detailUrl = "http://www.csfd.cz/film/" + options.getId(getProviderInfo().getId());
-			} else {
-				detailUrl = options.getResult().getUrl();
-			}
-		}
-
-		// case b)
-		if (options.getResult() == null && StringUtils.isNotBlank(options.getId(MediaMetadata.IMDB))) {
-			MediaSearchOptions searchOptions = new MediaSearchOptions(MediaType.MOVIE);
-			searchOptions.set(SearchParam.IMDBID, options.getId(MediaMetadata.IMDB));//TODO asi neni dobre
-			try {
-				List<MediaSearchResult> results = search(searchOptions);
-				if (results != null && !results.isEmpty()) {
-					options.setResult(results.get(0));
-					detailUrl = options.getResult().getUrl();
-				}
-			} catch (Exception e) {
-				LOGGER.warn("failed IMDB search: " + e.getMessage(), e);
-			}
+		String optionsId = options.getId(getProviderInfo().getId());
+		if (StringUtils.isNotBlank(optionsId)) {
+			detailUrl = "http://www.csfd.cz/film/" + optionsId;
+			LOGGER.debug("detailUrl by id=" + optionsId + ": " + detailUrl);
+		} else {
+			detailUrl = options.getResult().getUrl();
+			LOGGER.debug("detailUrl by url=" + detailUrl);
 		}
 
 		if (StringUtils.isBlank(detailUrl)) {
@@ -195,6 +181,8 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider, IMovieArtwo
 					r = r.replaceAll("%", "");
 					double rating = Double.parseDouble(r) / 10.0;
 					md.storeMetadata(MediaMetadata.RATING, rating);
+					String voteCount = doc.getElementsByAttributeValue("itemProp", "ratingCount").attr("content");
+					md.storeMetadata(MediaMetadata.VOTE_COUNT, voteCount);
 				} catch (Exception e) {
 					LOGGER.debug("could not parse rating" + e.getMessage(), e);
 				}
@@ -379,7 +367,7 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider, IMovieArtwo
 				MediaSearchResult sr = new MediaSearchResult(providerInfo.getId());
 				sr.setId(StrgUtils.substr(movieLink.toString(), "film\\/(\\d+).*")); // CSFD ID
 				sr.setTitle(movieLink.text());
-				LOGGER.debug("found movie " + sr.getTitle());
+				LOGGER.debug(String.format("found movie '%s', id=%s", sr.getTitle(), sr.getId()));
 
 				Elements firstDecription = movieLink.parent().parent().getElementsByTag("p");
 				if (!firstDecription.isEmpty()) {
@@ -416,9 +404,6 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider, IMovieArtwo
 				LOGGER.warn("error parsing movie result: " + e.getMessage(), e);
 			}
 		}
-		Collections.sort(resultList);
-		Collections.reverse(resultList);
-
 		return resultList;
 	}
 

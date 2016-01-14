@@ -56,12 +56,12 @@ public class CsfdMetadataProviderTest {
 
 	@Test
 	public void testSearchPlaneta() throws Exception {
-		MediaSearchOptions options = new MediaSearchOptions(MediaType.MOVIE, MediaSearchOptions.SearchParam.QUERY, "Planeta");
+		MediaSearchOptions options = new MediaSearchOptions(MediaType.MOVIE, MediaSearchOptions.SearchParam.QUERY, "Planeta opic");
 		options.set(MediaSearchOptions.SearchParam.LANGUAGE, "cs");
 		List<MediaSearchResult> results = mp.search(options);
 		assertNotNull("Result", results);
-		assertEquals("Planeta Yó", results.get(0).getTitle());// opice ne
-		assertEquals("2011", results.get(0).getYear());
+		assertEquals("Planeta opic", results.get(0).getTitle());// opice ne
+		assertEquals("1968", results.get(0).getYear());
 		// result count
 		assertEquals("Result count", 50, results.size());
 	}
