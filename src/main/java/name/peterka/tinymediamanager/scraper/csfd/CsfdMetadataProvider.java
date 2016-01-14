@@ -70,7 +70,7 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider, IMovieArtwo
 			throw new UnsupportedMediaTypeException(options.getType());
 		}
 
-		String detailUrl = "";
+		String detailUrl;
 
 		String optionsId = options.getId(getProviderInfo().getId());
 		if (StringUtils.isNotBlank(optionsId)) {
@@ -87,15 +87,10 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider, IMovieArtwo
 
 		MediaMetadata md = new MediaMetadata(providerInfo.getId());
 
-		String csfdId = StrgUtils.substr(detailUrl, "film/(\\d++)");
 
-		Url url;
-		try {
-			LOGGER.trace("get details page " + csfdId);
-			url = new Url(detailUrl);
-			InputStream in = url.getInputStream();
+		Url url = new Url(detailUrl);
+		try (InputStream in = url.getInputStream()) {
 			Document doc = Jsoup.parse(in, "UTF-8", "");
-			in.close();
 
 			// title year
 			addTitleYear(md, doc);
@@ -116,7 +111,7 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider, IMovieArtwo
 			addCreators(md, doc);
 
 		} catch (Exception e) {
-			LOGGER.error("Error parsing " + detailUrl);
+			LOGGER.error("Error parsing " + detailUrl + ": " + e.getMessage(), e);
 			throw e;
 		}
 
@@ -165,7 +160,7 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider, IMovieArtwo
 	private void addGenre(MediaMetadata md, Document doc) {
 		Elements genre = doc.getElementsByClass("genre");
 		for (Element g : genre) {
-			List<MediaGenres> tmmGenres = getTmmGenres(g.text());
+			List<MediaGenres> tmmGenres = GenresUtil.getTmmGenres(g.text());
 			for (MediaGenres tmmGenre : tmmGenres) {
 				md.addGenre(tmmGenre);
 			}
@@ -226,99 +221,6 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider, IMovieArtwo
 			castType = MediaCastMember.CastType.ACTOR;
 		}
 		return castType;
-	}
-
-	/*
-	 * Maps scraper Genres to internal TMM genres
-	 */
-	private List<MediaGenres> getTmmGenres(String genreLine) {
-		LinkedList<MediaGenres> result = new LinkedList<>();
-		String[] genres = genreLine.split(" / ");
-		for (String genre : genres) {
-			MediaGenres tmmGenre = translateGenre(genre);
-			if (tmmGenre == null) {
-				tmmGenre = MediaGenres.getGenre(genre);
-			}
-			result.add(tmmGenre);
-		}
-		return result;
-	}
-
-	private MediaGenres translateGenre(String genre) {
-		switch (genre) {
-			case "Akční":
-				return MediaGenres.ACTION;
-			case "Animovaný":
-				return MediaGenres.ANIMATION;
-			case "Dobrodružný":
-				return MediaGenres.ADVENTURE;
-			case "Dokumentární":
-				return MediaGenres.DOCUMENTARY;
-			case "Drama":
-				return MediaGenres.DRAMA;
-			case "Erotický":
-				return MediaGenres.EROTIC;
-			case "Experimentální":
-				return MediaGenres.EROTIC;
-			case "Fantasy":
-				return MediaGenres.FANTASY;
-			case "Film-Noir":
-				return MediaGenres.FILM_NOIR;
-			case "Historický":
-				return MediaGenres.HISTORY;
-			case "Horor":
-				return MediaGenres.HORROR;
-			case "Hudební":
-				return MediaGenres.MUSIC;
-			case "IMAX":
-			case "Katastrofický":
-				return MediaGenres.DISASTER;
-			case "Komedie":
-				return MediaGenres.COMEDY;
-			case "Krátkometrážní":
-				return MediaGenres.SHORT;
-			case "Krimi":
-				return MediaGenres.CRIME;
-			case "Loutkový":
-			case "Muzikál":
-				return MediaGenres.MUSICAL;
-			case "Mysteriózní":
-				return MediaGenres.MYSTERY;
-			case "Podobenství":
-			case "Poetický":
-			case "Pohádka":
-			case "Povídkový":
-			case "Psychologický":
-			case "Publicistický":
-				return MediaGenres.NEWS;
-			case "Reality-TV":
-				return MediaGenres.REALITY_TV;
-			case "Road movie":
-				return MediaGenres.ROAD_MOVIE;
-			case "Rodinný":
-				return MediaGenres.FAMILY;
-			case "Romantický":
-				return MediaGenres.ROMANCE;
-			case "Sci-Fi":
-				return MediaGenres.SCIENCE_FICTION;
-			case "Soutěžní":
-				return MediaGenres.GAME_SHOW;
-			case "Sportovní":
-				return MediaGenres.SPORT;
-			case "Talk-show":
-				return MediaGenres.TALK_SHOW;
-			case "Taneční":
-			case "Telenovela":
-				return MediaGenres.TV_MOVIE;
-			case "Thriller":
-				return MediaGenres.THRILLER;
-			case "Válečný":
-				return MediaGenres.WAR;
-			case "Western":
-				return MediaGenres.WESTERN;
-			case "Životopisný":
-		}
-		return null;
 	}
 
 	@Override
@@ -417,7 +319,8 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider, IMovieArtwo
 	 */
 	@Override
 	public List<MediaArtwork> getArtwork(MediaScrapeOptions options) throws Exception {
-		String csfdId = options.getId("csfd");
+		String csfdId = options.getId(getProviderInfo().getId());
+		LOGGER.debug("get artwork options " + options);
 		LOGGER.debug("get artwork page " + csfdId);
 		LinkedList<MediaArtwork> result = new LinkedList<>();
 

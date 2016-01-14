@@ -85,6 +85,7 @@ public class CsfdMetadataProviderTest {
 				"Někde ve vesmíru přece musí být něco, co je lepší než člověk.");
 		assertThat(md.getStringValue(MediaMetadata.TAGLINE)).isEmpty();
 		assertThat(md.getDoubleValue(MediaMetadata.RATING)).isBetween(8.2, 8.9);
+		assertThat(md.getDoubleValue(MediaMetadata.VOTE_COUNT)).isGreaterThan(22500);
 
 		assertThat(md.getCastMembers(MediaCastMember.CastType.ACTOR)).isNotNull();
 		assertThat(md.getCastMembers(MediaCastMember.CastType.ACTOR).size()).isEqualTo(16);
