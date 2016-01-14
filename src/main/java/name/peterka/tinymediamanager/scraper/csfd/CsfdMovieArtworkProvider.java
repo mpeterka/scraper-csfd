@@ -48,7 +48,6 @@ public class CsfdMovieArtworkProvider implements IMovieArtworkProvider {
 	}
 
 	/**
-	 *
 	 * @param options
 	 * @return
 	 * @throws Exception
@@ -65,32 +64,40 @@ public class CsfdMovieArtworkProvider implements IMovieArtworkProvider {
 		LinkedList<MediaArtwork> result = new LinkedList<>();
 
 		Url url = new Url(BASE_URL + "/film/" + csfdId + "/galerie");
-		InputStream in = url.getInputStream();
-		Document doc = Jsoup.parse(in, "UTF-8", "");
-		in.close();
+		try (InputStream in = url.getInputStream()) {
+			Document doc = Jsoup.parse(in, "UTF-8", "");
 
-		Elements photos = doc.getElementsByClass("photo");
+			Elements photos = doc.getElementsByClass("photo");
 
-		for (int i = 0; i < photos.size(); i++) {
-			Element photo = photos.get(i);
+			LOGGER.debug("Photos: " + photos);
 
-			String style = photo.attr("style");
-			Pattern p = Pattern.compile(".*'(.*)'.*");
-			Matcher matcher = p.matcher(style);
-			if (matcher.matches()) {
-				String background = matcher.group(1);
-				String backgroundUrl = ImageUtil.fixImageUrl(background);
+			for (int i = 0; i < photos.size(); i++) {
+				Element photo = photos.get(i);
 
-				MediaArtwork artwork = new MediaArtwork();
-				artwork.setType(MediaArtwork.MediaArtworkType.BACKGROUND);
-				artwork.setDefaultUrl(backgroundUrl);
+				String style = photo.attr("style");
+				Pattern p = Pattern.compile(".*'(.*)'.*");
+				Matcher matcher = p.matcher(style);
+				if (matcher.matches()) {
+					String background = matcher.group(1);
+					String backgroundUrl = ImageUtil.fixImageUrl(background);
 
-				LOGGER.debug("Found artwork at " + backgroundUrl);
-				result.add(artwork);
+					MediaArtwork artwork = new MediaArtwork();
+					MediaArtwork.MediaArtworkType type = MediaArtwork.MediaArtworkType.POSTER;
+					artwork.setType(type);
+					artwork.setDefaultUrl(backgroundUrl);
+					artwork.setPreviewUrl(backgroundUrl);
+					artwork.setProviderId(providerInfo.getId());
+					artwork.setSizeOrder(MediaArtwork.FanartSizes.MEDIUM.getOrder());
+					artwork.addImageSize(700, 400, backgroundUrl);// TODO: lepe
+					artwork.setImdbId(csfdId);
+
+					LOGGER.debug(String.format("Found artwork at %s / result=%s", backgroundUrl, artwork));
+					result.add(artwork);
+				}
+
 			}
 
+			return result;
 		}
-
-		return result;
 	}
 }

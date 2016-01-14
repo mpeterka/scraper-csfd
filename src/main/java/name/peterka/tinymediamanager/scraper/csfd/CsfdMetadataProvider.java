@@ -68,7 +68,7 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider {
 		String detailUrl;
 
 		String imdbId = options.getImdbId();
-		String optionsId = imdbId != null ? imdbId : options.getId(getProviderInfo().getId());
+		String optionsId = StringUtils.isNotBlank(imdbId) ? imdbId : options.getId(getProviderInfo().getId());
 		if (StringUtils.isNotBlank(optionsId)) {
 			detailUrl = Constants.BASE_URL + "/film/" + optionsId;
 			LOGGER.debug("detailUrl by id=" + optionsId + ": " + detailUrl);
@@ -185,8 +185,11 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider {
 	}
 
 	private void addPlot(MediaMetadata md, Document doc) {
-		String plot = doc.getElementById("plots").getElementsByClass("content").first().getElementsByTag("div").first().text();
-		md.storeMetadata(MediaMetadata.PLOT, plot);
+		Element plots = doc.getElementById("plots");
+		if (plots != null) {
+			String plot = plots.getElementsByClass("content").first().getElementsByTag("div").first().text();
+			md.storeMetadata(MediaMetadata.PLOT, plot);
+		}
 	}
 
 	private void addCreators(MediaMetadata md, Document doc) {
