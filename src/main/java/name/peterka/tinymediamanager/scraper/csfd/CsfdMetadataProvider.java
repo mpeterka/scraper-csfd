@@ -67,19 +67,24 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider {
 
 		String detailUrl;
 
-		String optionsId = options.getId(getProviderInfo().getId());
+		String imdbId = options.getImdbId();
+		String optionsId = imdbId != null ? imdbId : options.getId(getProviderInfo().getId());
 		if (StringUtils.isNotBlank(optionsId)) {
-			detailUrl = "http://www.csfd.cz/film/" + optionsId;
+			detailUrl = Constants.BASE_URL + "/film/" + optionsId;
 			LOGGER.debug("detailUrl by id=" + optionsId + ": " + detailUrl);
-		} else if (options.getResult() != null){
+		} else if (options.getResult() != null) {
 			detailUrl = options.getResult().getUrl();
-			LOGGER.debug("detailUrl by url=" + detailUrl);
+			optionsId = extractCsfdId(detailUrl);
+			LOGGER.debug("detailUrl by url=" + detailUrl + ", optionsId=" + optionsId);
 		} else {
 			throw new Exception("We did not get any useful movie url");
 		}
 
 		MediaMetadata md = new MediaMetadata(providerInfo.getId());
 
+		md.storeMetadata(MediaMetadata.IMDB, optionsId);// kvuli artwork :/
+		md.setId("csfd", optionsId);
+		md.setId("imdb", optionsId);
 
 		Url url = new Url(detailUrl);
 		try (InputStream in = url.getInputStream()) {
@@ -103,7 +108,9 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider {
 			// creators
 			addCreators(md, doc);
 
-			MediaSearchResult mediaSearchResult = new MediaSearchResult(getProviderInfo().getId()) ;
+			MediaSearchResult mediaSearchResult = new MediaSearchResult(getProviderInfo().getId());
+			mediaSearchResult.setIMDBId(optionsId);
+			mediaSearchResult.setId(optionsId);
 			mediaSearchResult.setMetadata(md);
 			options.setResult(mediaSearchResult);
 
@@ -111,6 +118,8 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider {
 			LOGGER.error("Error parsing " + detailUrl + ": " + e.getMessage(), e);
 			throw e;
 		}
+
+		LOGGER.info("Result metadata: " + md);
 
 		return md;
 	}
@@ -257,7 +266,9 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider {
 		for (Element movieLink : movieLinks) {
 			try {
 				MediaSearchResult sr = new MediaSearchResult(providerInfo.getId());
-				sr.setId(StrgUtils.substr(movieLink.toString(), "film\\/(\\d+).*")); // CSFD ID
+				String csfdId = extractCsfdId(movieLink.toString());
+				sr.setId(csfdId);
+				sr.setIMDBId(csfdId);
 				sr.setTitle(movieLink.text());
 				LOGGER.debug(String.format("found movie '%s', id=%s", sr.getTitle(), sr.getId()));
 
@@ -297,6 +308,10 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider {
 			}
 		}
 		return resultList;
+	}
+
+	private String extractCsfdId(String movieLink) {
+		return StrgUtils.substr(movieLink, "film\\/(\\d+).*");
 	}
 
 }

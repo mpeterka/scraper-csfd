@@ -36,7 +36,7 @@ public class CsfdMovieArtworkProvider implements IMovieArtworkProvider {
 	}
 
 	private static MediaProviderInfo createMediaProviderInfo() {
-		MediaProviderInfo providerInfo = new MediaProviderInfo("csfd", "Česko-Slovenská filmová databáze (CSFD.cz)",
+		MediaProviderInfo providerInfo = new MediaProviderInfo("csfd-artwork", "CSFD.cz galerie)",
 				"<html><h3>Česko-Slovenská filmová databáze - stahovač galerie</h3><br />Available languages: CZ</html>",
 				CsfdMetadataProvider.class.getResource("/csfd_cz.png"));
 		return providerInfo;
@@ -48,7 +48,6 @@ public class CsfdMovieArtworkProvider implements IMovieArtworkProvider {
 	}
 
 	/**
-	 * FIXME: Nefunguje, mozna We did not get any useful movie url at name.peterka.tinymediamanager.scraper.csfd.CsfdMetadataProvider.getMetadata(CsfdMetadataProvider.java:114) ~[na:na]
 	 *
 	 * @param options
 	 * @return
@@ -57,8 +56,12 @@ public class CsfdMovieArtworkProvider implements IMovieArtworkProvider {
 	@Override
 	public List<MediaArtwork> getArtwork(MediaScrapeOptions options) throws Exception {
 		String csfdId = options.getId(getProviderInfo().getId());
+		if (csfdId == null) {
+			csfdId = options.getImdbId();//XXX je to tak, asi
+		}
+
 		LOGGER.debug("get artwork options " + options);
-		LOGGER.debug("get artwork page " + csfdId);
+		LOGGER.debug("get artwork page id=" + csfdId);
 		LinkedList<MediaArtwork> result = new LinkedList<>();
 
 		Url url = new Url(BASE_URL + "/film/" + csfdId + "/galerie");
