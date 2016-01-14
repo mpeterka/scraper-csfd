@@ -68,6 +68,7 @@ public class GenresUtil {
 			case "Podobenství":
 			case "Poetický":
 			case "Pohádka":
+				return MediaGenres.FAMILY;
 			case "Povídkový":
 			case "Psychologický":
 			case "Publicistický":

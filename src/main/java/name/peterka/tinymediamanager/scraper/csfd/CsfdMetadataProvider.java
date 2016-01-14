@@ -53,7 +53,6 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider, IMovieArtwo
 		MediaProviderInfo providerInfo = new MediaProviderInfo("csfd", "Česko-Slovenská filmová databáze (CSFD.cz)",
 				"<html><h3>Česko-Slovenská filmová databáze</h3><br />Available languages: CZ</html>",
 				CsfdMetadataProvider.class.getResource("/csfd_cz.png"));
-		providerInfo.setVersion(CsfdMetadataProvider.class);
 		return providerInfo;
 	}
 
@@ -109,6 +108,10 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider, IMovieArtwo
 
 			// creators
 			addCreators(md, doc);
+
+			MediaSearchResult mediaSearchResult = new MediaSearchResult(getProviderInfo().getId()) ;
+			mediaSearchResult.setMetadata(md);
+			options.setResult(mediaSearchResult);
 
 		} catch (Exception e) {
 			LOGGER.error("Error parsing " + detailUrl + ": " + e.getMessage(), e);
@@ -255,7 +258,7 @@ public class CsfdMetadataProvider implements IMovieMetadataProvider, IMovieArtwo
 				movieLinks = doc.getElementsByClass("film");
 				LOGGER.debug("found " + movieLinks.size() + " search results");
 			} catch (Exception e) {
-				LOGGER.error("failed to search for " + searchQuery + ": " + e.getMessage());
+				LOGGER.error(String.format("failed to search for %s: %s", searchQuery, e.getMessage()), e);
 			}
 		}
 
